@@ -202,6 +202,14 @@ impl Scanner {
         self.source[self.current]
     }
 
+    fn peek_next(&self) -> char {
+        if (self.current + 1) >= self.source.len() {
+            return '\0';
+        }
+
+        return self.source[self.current + 1];
+    }
+
     fn string(&mut self) {
         while self.peek() != '"' && !self.is_at_end() {
             if self.peek() == '\n' {
@@ -248,14 +256,6 @@ impl Scanner {
             }
         };
         self.tokens.push(TokenType::Number(digit));
-    }
-
-    fn peek_next(&self) -> char {
-        if (self.current + 1) >= self.source.len() {
-            return '\0';
-        }
-
-        return self.source[self.current + 1];
     }
 
     fn identifier(&mut self) {
