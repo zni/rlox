@@ -1,5 +1,5 @@
 [package]
-name = "scanner"
+name = "rlox"
 version = "0.1.0"
 authors = ["Matt Godshall <lifeinhex@gmail.com>"]
 edition = "2018"
