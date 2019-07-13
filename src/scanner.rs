@@ -1,5 +1,18 @@
 use std::collections::HashMap;
 
+#[derive(Debug)]
+pub struct Token {
+    token_type: TokenType,
+    lexeme: String,
+    line: u32,
+}
+
+impl Token {
+    fn new(token_type: TokenType, lexeme: String, line: u32) -> Token {
+        Token { token_type, lexeme, line }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum TokenType {
     // Single character tokens.
@@ -51,7 +64,7 @@ pub enum TokenType {
 
 pub struct Scanner {
     source: Vec<char>,
-    pub tokens: Vec<TokenType>,
+    pub tokens: Vec<Token>,
     reserved: HashMap<String, TokenType>,
     start: usize,
     current: usize,
@@ -94,48 +107,55 @@ impl Scanner {
             self.scan_token();
         }
 
-        self.tokens.push(TokenType::EOF);
+        self.add_token(TokenType::EOF);
+    }
+
+    fn add_token(&mut self, token: TokenType) {
+        let lexeme = self.source[self.start..self.current].to_vec();
+        let lexeme = lexeme.iter().collect();
+        let token = Token::new(token, lexeme, self.line);
+        self.tokens.push(token);
     }
 
     fn scan_token(&mut self) {
         let c: char = self.advance();
         match c {
-            '(' => self.tokens.push(TokenType::LeftParen),
-            ')' => self.tokens.push(TokenType::RightParen),
-            '{' => self.tokens.push(TokenType::LeftBrace),
-            '}' => self.tokens.push(TokenType::RightBrace),
-            ',' => self.tokens.push(TokenType::Comma),
-            '.' => self.tokens.push(TokenType::Dot),
-            '-' => self.tokens.push(TokenType::Minus),
-            '+' => self.tokens.push(TokenType::Plus),
-            ';' => self.tokens.push(TokenType::Semicolon),
-            '*' => self.tokens.push(TokenType::Star),
+            '(' => self.add_token(TokenType::LeftParen),
+            ')' => self.add_token(TokenType::RightParen),
+            '{' => self.add_token(TokenType::LeftBrace),
+            '}' => self.add_token(TokenType::RightBrace),
+            ',' => self.add_token(TokenType::Comma),
+            '.' => self.add_token(TokenType::Dot),
+            '-' => self.add_token(TokenType::Minus),
+            '+' => self.add_token(TokenType::Plus),
+            ';' => self.add_token(TokenType::Semicolon),
+            '*' => self.add_token(TokenType::Star),
             '!' => {
                 if self.match_char('=') {
-                    self.tokens.push(TokenType::BangEqual);
+                    self.add_token(TokenType::BangEqual);
                 } else {
-                    self.tokens.push(TokenType::Bang);
+                    self.add_token(TokenType::Bang);
                 }
             },
             '=' => {
                 if self.match_char('=') {
-                    self.tokens.push(TokenType::EqualEqual);
+                    self.add_token(TokenType::EqualEqual);
                 } else {
-                    self.tokens.push(TokenType::Equal);
+                    self.add_token(TokenType::Equal);
                 }
             },
             '<' => {
                 if self.match_char('=') {
-                    self.tokens.push(TokenType::LessEqual);
+                    self.add_token(TokenType::LessEqual);
                 } else {
-                    self.tokens.push(TokenType::Less);
+                    self.add_token(TokenType::Less);
                 }
             },
             '>' => {
                 if self.match_char('=') {
-                    self.tokens.push(TokenType::GreaterEqual);
+                    self.add_token(TokenType::GreaterEqual);
                 } else {
-                    self.tokens.push(TokenType::Greater);
+                    self.add_token(TokenType::Greater);
                 }
             },
             '/' => {
@@ -144,7 +164,7 @@ impl Scanner {
                         self.advance();
                     }
                 } else {
-                    self.tokens.push(TokenType::Slash);
+                    self.add_token(TokenType::Slash);
                 }
             },
             ' ' => return,
@@ -221,7 +241,7 @@ impl Scanner {
         self.advance();
         let slice: Vec<char> = self.source[self.start + 1..self.current - 1].to_vec();
         let slice: String = slice.iter().collect();
-        self.tokens.push(TokenType::String(slice));
+        self.add_token(TokenType::String(slice));
     }
 
     fn is_digit(c: char) -> bool {
@@ -250,7 +270,7 @@ impl Scanner {
                 0.0
             }
         };
-        self.tokens.push(TokenType::Number(digit));
+        self.add_token(TokenType::Number(digit));
     }
 
     fn identifier(&mut self) {
@@ -262,8 +282,8 @@ impl Scanner {
         let slice: String = slice.iter().collect();
 
         match self.reserved.get(&slice) {
-            Some(t) => self.tokens.push(t.clone()),
-            None => self.tokens.push(TokenType::Identifier(slice)),
+            Some(t) => self.add_token(t.clone()),
+            None => self.add_token(TokenType::Identifier(slice)),
         }
     }
 

@@ -6,12 +6,11 @@ use std::path::Path;
 use std::process;
 
 mod scanner;
-use scanner as lex;
+mod ast;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-
-    if args.len() > 1 {
+    if args.len() > 2 {
         println!("usage: rlox <file>");
         process::exit(64);
     } else if args.len() == 2 {
@@ -49,7 +48,7 @@ fn run_prompt() {
 }
 
 fn run(source: Vec<char>) {
-    let mut scanner: lex::Scanner = lex::Scanner::new(source);
+    let mut scanner: scanner::Scanner = scanner::Scanner::new(source);
     scanner.scan_tokens();
     println!("{:?}", scanner.tokens);
 }
