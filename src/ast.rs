@@ -20,36 +20,44 @@ pub enum Expr {
  *                | "(" expression ")" ;
  */
 
-struct Parser<'a> {
+pub struct Parser {
     current: usize,
-    tokens: &'a Vec<scanner::Token>,
+    tokens: Vec<scanner::Token>,
 }
 
-impl<'a> Parser<'a> {
-    fn new(tokens: &'a Vec<scanner::Token>) -> Parser<'a> {
+impl Parser {
+    pub fn new(tokens: Vec<scanner::Token>) -> Parser {
         Parser {
             current: 0,
             tokens
         }
     }
 
-    fn expression(&mut self) -> Expr {
+    pub fn parse(&mut self) -> Result<Expr, &'static str> {
+        self.expression()
+    }
+
+    fn expression(&mut self) -> Result<Expr, &'static str> {
         self.equality()
     }
 
-    fn equality(&mut self) -> Expr {
+    fn equality(&mut self) -> Result<Expr, &'static str> {
         let mut expr = self.comparison();
         while self.match_token(vec![scanner::TokenType::BangEqual,
                                     scanner::TokenType::EqualEqual]) {
             let operator = self.previous();
             let right = self.comparison();
-            expr = Expr::Binary(Box::new(expr), operator, Box::new(right));
+            if right.is_ok() && expr.is_ok() {
+                expr = Ok(Expr::Binary(Box::new(expr.unwrap()), operator, Box::new(right.unwrap())));
+            } else {
+                return Err("expecting equality");
+            }
         }
 
         expr
     }
 
-    fn comparison(&mut self) -> Expr {
+    fn comparison(&mut self) -> Result<Expr, &'static str> {
         let mut expr = self.addition();
         while self.match_token(vec![scanner::TokenType::Greater,
                                     scanner::TokenType::GreaterEqual,
@@ -57,81 +65,113 @@ impl<'a> Parser<'a> {
                                     scanner::TokenType::LessEqual]) {
             let operator = self.previous();
             let right = self.addition();
-            expr = Expr::Binary(Box::new(expr), operator, Box::new(right));
+            if right.is_ok() && expr.is_ok() {
+                expr = Ok(Expr::Binary(Box::new(expr.unwrap()), operator, Box::new(right.unwrap())));
+            } else {
+                return Err("expecting comparison");
+            }
         }
 
         expr
     }
 
-    fn addition(&mut self) -> Expr {
+    fn addition(&mut self) -> Result<Expr, &'static str> {
         let mut expr = self.multiplication();
         while self.match_token(vec![scanner::TokenType::Plus,
                                     scanner::TokenType::Minus]) {
             let operator = self.previous();
             let right = self.multiplication();
-            expr = Expr::Binary(Box::new(expr), operator, Box::new(right));
+            if right.is_ok() && expr.is_ok() {
+                expr = Ok(Expr::Binary(Box::new(expr.unwrap()), operator, Box::new(right.unwrap())));
+            } else {
+                return Err("expecting addition");
+            }
         }
 
         expr
     }
 
-    fn multiplication(&mut self) -> Expr {
+    fn multiplication(&mut self) -> Result<Expr, &'static str> {
         let mut expr = self.unary();
         while self.match_token(vec![scanner::TokenType::Star,
                                     scanner::TokenType::Slash]) {
             let operator = self.previous();
             let right = self.unary();
-            expr = Expr::Binary(Box::new(expr), operator, Box::new(right));
+            if right.is_ok() && expr.is_ok() {
+                expr = Ok(Expr::Binary(Box::new(expr.unwrap()), operator, Box::new(right.unwrap())));
+            } else {
+                return Err("expecting multiplication");
+            }
         }
 
         expr
     }
 
-    fn unary(&mut self) -> Expr {
+    fn unary(&mut self) -> Result<Expr, &'static str> {
         if self.match_token(vec![scanner::TokenType::Bang,
                                  scanner::TokenType::Minus]) {
             let operator = self.previous();
             let right = self.unary();
-            return Expr::Unary(operator, Box::new(right));
+            if right.is_ok() {
+                return Ok(Expr::Unary(operator, Box::new(right.unwrap())));
+            } else {
+                return Err("expecting unary");
+            }
         }
 
-        return self.primary();
+        let primary = self.primary();
+        if primary.is_ok() {
+            return Ok(primary.unwrap());
+        } else {
+            return Err("expecting primary");
+        }
     }
 
-    fn primary(&mut self) -> Expr {
+    fn primary(&mut self) -> Result<Expr, &'static str> {
         if self.match_token(vec![scanner::TokenType::False]) {
-            return Expr::Literal(self.previous());
+            return Ok(Expr::Literal(self.previous()));
         }
         if self.match_token(vec![scanner::TokenType::True]) {
-            return Expr::Literal(self.previous());
+            return Ok(Expr::Literal(self.previous()));
         }
         if self.match_token(vec![scanner::TokenType::Nil]) {
-            return Expr::Literal(self.previous());
+            return Ok(Expr::Literal(self.previous()));
         }
 
         if let scanner::TokenType::Number(_) = self.peek().token_type {
             self.advance();
-            return Expr::Literal(self.previous());
+            return Ok(Expr::Literal(self.previous()));
         }
 
         if let scanner::TokenType::String(_) = self.peek().token_type {
             self.advance();
-            return Expr::Literal(self.previous());
+            return Ok(Expr::Literal(self.previous()));
         }
 
         if self.match_token(vec![scanner::TokenType::LeftParen]) {
             let expr = self.expression();
-            self.consume(scanner::TokenType::RightParen, "Expect ')' after expression");
-            return Expr::Grouping(Box::new(expr));
+
+            let consumed = self.consume(scanner::TokenType::RightParen, "Expect ')' after expression");
+            if consumed.is_err() {
+                return Err("Expect ')' after expression");
+            }
+
+            if expr.is_ok() {
+                return Ok(Expr::Grouping(Box::new(expr.unwrap())));
+            } else {
+                return Err("expecting grouping");
+            }
         }
+
+        Err("expecting expression")
     }
 
-    fn consume(&mut self, token_type: scanner::TokenType, message: &str) -> scanner::Token {
+    fn consume(&mut self, token_type: scanner::TokenType, message: &'static str) -> Result<scanner::Token, &'static str> {
         if self.check(token_type) {
-            return self.advance();
+            return Ok(self.advance());
         }
 
-        // Error
+        Err(message)
     }
 
     fn match_token(&mut self, tokens: Vec<scanner::TokenType>) -> bool {
@@ -166,10 +206,10 @@ impl<'a> Parser<'a> {
     }
 
     fn peek(&self) -> scanner::Token {
-        self.tokens[self.current]
+        self.tokens[self.current].clone()
     }
 
     fn previous(&self) -> scanner::Token {
-        self.tokens[self.current - 1]
+        self.tokens[self.current - 1].clone()
     }
 }

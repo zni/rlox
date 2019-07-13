@@ -51,4 +51,7 @@ fn run(source: Vec<char>) {
     let mut scanner: scanner::Scanner = scanner::Scanner::new(source);
     scanner.scan_tokens();
     println!("{:?}", scanner.tokens);
+
+    let mut parser: ast::Parser = ast::Parser::new(scanner.tokens);
+    println!("{:?}", parser.parse());
 }
