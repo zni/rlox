@@ -2,9 +2,9 @@ use std::collections::HashMap;
 
 #[derive(Debug)]
 pub struct Token {
-    token_type: TokenType,
-    lexeme: String,
-    line: u32,
+    pub token_type: TokenType,
+    pub lexeme: String,
+    pub line: u32,
 }
 
 impl Token {
@@ -13,7 +13,7 @@ impl Token {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum TokenType {
     // Single character tokens.
     LeftParen,
